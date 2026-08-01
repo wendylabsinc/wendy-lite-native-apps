@@ -35,8 +35,6 @@ void app_main(void)
     };
     ESP_ERROR_CHECK(gpio_config(&led_config));
 
-//    ESP_ERROR_CHECK(camera_start());
-
     ESP_ERROR_CHECK(face_cam_init());
     ESP_ERROR_CHECK(qr_scan_init());
     ESP_ERROR_CHECK(web_server_start());
@@ -46,6 +44,5 @@ void app_main(void)
         on = !on;
         ESP_ERROR_CHECK(gpio_set_level(USER_LED_GPIO, on ? 0 : 1));
         vTaskDelay(pdMS_TO_TICKS(500));
-        printf("Cycle %d\n", count++);
     }
 }
