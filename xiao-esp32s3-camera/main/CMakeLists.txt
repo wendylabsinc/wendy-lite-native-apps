@@ -1,5 +1,5 @@
 idf_component_register(SRCS "main.c" "camera.c" "cam_capture.c" "face_cam.cpp"
-                         "qr_scan.c" "web_server.c" "rom_print.c"
+                         "qr_scan.c" "web_server.c"
                     INCLUDE_DIRS "."
                     EMBED_TXTFILES "index.html"
                     REQUIRES wendy_core

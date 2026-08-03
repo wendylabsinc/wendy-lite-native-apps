@@ -9,7 +9,6 @@
 #include "camera.h"
 #include "face_cam.h"
 #include "qr_scan.h"
-#include "rom_print.h"
 #include "web_server.h"
 
 // Onboard user LED (GPIO 21 on the XIAO ESP32S3), active low: LOW = on
@@ -17,12 +16,7 @@
 
 void app_main(void)
 {
-    // Before wendy_core_init(), which hands USB Serial/JTAG to wendy_usj.
-    rom_print_usb_disable();
-
     ESP_ERROR_CHECK(wendy_core_init());
-
-    rom_print_report();
 
     int count = 0;
 
