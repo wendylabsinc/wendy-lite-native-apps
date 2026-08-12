@@ -14,3 +14,6 @@ sdkconfig.old
 # source of truth. Tracking the resolved tree was painful with
 # multi-target builds because the per-target dep closures differ.
 managed_components/
+
+# We don't want the demos to stick to given components versions
+dependencies.lock
