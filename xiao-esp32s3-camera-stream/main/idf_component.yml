@@ -1,0 +1,14 @@
+dependencies:
+  idf:
+    version: ">=5.5.0"
+  espressif/esp32-camera:
+    version: "^2.0.0"
+  espressif/human_face_detect:
+    version: "^0.5.0"
+  espressif/mdns:
+    version: "^1.11.0"
+  espressif/quirc:
+    version: "^1.2.0"
+  wendy_core:
+    git: "git@github.com:wendylabsinc/wendy-lite.git"
+    path: "components/wendy_core"

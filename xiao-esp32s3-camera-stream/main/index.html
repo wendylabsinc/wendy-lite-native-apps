@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>face-cam</title>
+<style>
+body { font-family: sans-serif; margin: 1rem; }
+#wrap { position: relative; display: inline-block; margin-top: 1rem; }
+#im { display: block; max-width: 100%; }
+#ov { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+pre { background: #f0f0f0; padding: 0.5rem; overflow-x: auto; }
+</style>
+</head>
+<body>
+<button id="btn">Detect Face</button> <button id="qrbtn">Scan QR</button> <span id="st"></span><br/>
+<div id="wrap"><img id="im"><canvas id="ov"></canvas></div>
+<pre id="out"></pre>
+<script>
+const btn = document.getElementById('btn');
+const qrbtn = document.getElementById('qrbtn');
+const st = document.getElementById('st');
+const im = document.getElementById('im');
+const ov = document.getElementById('ov');
+const out = document.getElementById('out');
+
+async function grab(captureUrl, imageUrl, draw) {
+  btn.disabled = qrbtn.disabled = true;
+  st.textContent = 'capturing...';
+  try {
+    const r = await fetch(captureUrl);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    out.textContent = JSON.stringify(d, null, 2);
+    im.onload = () => {
+      ov.width = d.width;
+      ov.height = d.height;
+      const c = ov.getContext('2d');
+      c.clearRect(0, 0, ov.width, ov.height);
+      draw(c, d);
+    };
+    im.src = imageUrl + '?t=' + Date.now();
+  } catch (e) {
+    st.textContent = 'error: ' + e.message;
+  }
+  btn.disabled = qrbtn.disabled = false;
+}
+
+btn.onclick = () => grab('/capture', '/image.jpg', (c, d) => {
+  c.strokeStyle = '#0f0';
+  c.fillStyle = '#f00';
+  c.lineWidth = 3;
+  for (const f of d.faces) {
+    c.strokeRect(f.box.x1, f.box.y1, f.box.x2 - f.box.x1, f.box.y2 - f.box.y1);
+    if (f.keypoints) {
+      for (const p of Object.values(f.keypoints)) {
+        c.beginPath();
+        c.arc(p[0], p[1], 4, 0, 2 * Math.PI);
+        c.fill();
+      }
+    }
+  }
+  st.textContent = d.faces.length + ' face(s)';
+});
+
+qrbtn.onclick = () => grab('/qr/capture', '/qr/image.jpg', (c, d) => {
+  c.lineWidth = 3;
+  c.font = '16px sans-serif';
+  for (const q of d.codes) {
+    c.strokeStyle = q.decoded ? '#0f0' : '#fa0';
+    c.beginPath();
+    q.corners.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y));
+    c.closePath();
+    c.stroke();
+    const label = q.decoded ? q.payload : ('? ' + q.error);
+    const [lx, ly] = q.corners[0];
+    c.fillStyle = '#000';
+    c.fillText(label, lx + 1, ly - 5);
+    c.fillStyle = q.decoded ? '#0f0' : '#fa0';
+    c.fillText(label, lx, ly - 6);
+  }
+  st.textContent = d.codes.length + ' QR code(s)';
+});
+</script>
+</body>
+</html>
