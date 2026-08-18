@@ -14,3 +14,10 @@ sdkconfig.old
 # source of truth. Tracking the resolved tree was painful with
 # multi-target builds because the per-target dep closures differ.
 managed_components/
+
+# No need to stick to a specific toolchain version.
+# `wendy run` will pick the right one for you.
+eim_config.toml
+
+# For demo projects we prefer to always grab the latest component versions.
+dependencies.lock

@@ -15,5 +15,9 @@ sdkconfig.old
 # multi-target builds because the per-target dep closures differ.
 managed_components/
 
-# We don't want the demos to stick to given components versions
+# No need to stick to a specific toolchain version.
+# `wendy run` will pick the right one for you.
+eim_config.toml
+
+# For demo projects we prefer to always grab the latest component versions.
 dependencies.lock
