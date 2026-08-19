@@ -5,5 +5,14 @@
     {
       "type": "network"
     }
-  ]
+  ],
+  "readiness": {
+    "tcpSocket": { "port": 80 },
+    "timeoutSeconds": 180
+  },
+  "hooks": {
+    "postStart": {
+      "cli": "wendy utils open-browser http://${WENDY_HOSTNAME}"
+    }
+  }
 }
