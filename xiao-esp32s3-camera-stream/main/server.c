@@ -19,10 +19,12 @@
 static const char *TAG = "server";
 
 #define SERVER_REQUEST_LEN 12
+#define SERVER_HANDSHAKE_LEN 4
 
-// Largest payload we are willing to buffer on the receive side. Anything
-// bigger means the stream is out of sync, since no known message comes close.
-#define SERVER_MAX_RX_PAYLOAD 64
+// Room for the largest payload the protocol allows, so a message of a type we
+// do not know can always be skipped over rather than cost us the connection.
+// Anything bigger is a framing error, not a message we failed to keep up with.
+#define SERVER_MAX_RX_PAYLOAD (SERVER_MAX_MSG_LEN - SERVER_HEADER_LEN)
 
 // How many requests may wait for a frame. Beyond that the client is outrunning
 // the device and the extra requests are refused.
@@ -44,6 +46,9 @@ static size_t s_rx_len;
 static uint32_t s_requests[SERVER_REQUEST_QUEUE_LEN];
 static size_t s_request_head;
 static size_t s_request_count;
+
+// Handshakes received and not answered yet.
+static uint8_t s_handshakes_due;
 
 // Frame being chunked out, owned by this module.
 static uint8_t *s_frame;
@@ -129,6 +134,7 @@ static void close_client(void)
     s_rx_len = 0;
     s_request_head = 0;
     s_request_count = 0;
+    s_handshakes_due = 0;
     release_frame();
 }
 
@@ -161,6 +167,7 @@ static void accept_client(void)
     s_rx_len = 0;
     s_request_head = 0;
     s_request_count = 0;
+    s_handshakes_due = 0;
     s_frame_num = 0;
 
     ESP_LOGI(TAG, "client connected from %s:%u", inet_ntoa(addr.sin_addr), (unsigned)ntohs(addr.sin_port));
@@ -182,6 +189,31 @@ static void handle_request(const uint8_t *payload)
         ESP_LOGW(TAG, "dropping request 0x%08x, %d are already queued",
                  (unsigned)request_id, SERVER_REQUEST_QUEUE_LEN);
     }
+}
+
+// Returns false once the client has been dropped, which happens when it speaks
+// a newer major version than we do.
+static bool handle_handshake(const uint8_t *payload)
+{
+    uint16_t major = get_u16(payload);
+    uint16_t minor = get_u16(payload + 2);
+
+    if (major > SERVER_VERSION_MAJOR) {
+        ESP_LOGE(TAG, "client speaks version %u.%u, we speak %u.%u, dropping client",
+                 (unsigned)major, (unsigned)minor,
+                 (unsigned)SERVER_VERSION_MAJOR, (unsigned)SERVER_VERSION_MINOR);
+        close_client();
+        return false;
+    }
+
+    ESP_LOGI(TAG, "handshake from a version %u.%u client", (unsigned)major, (unsigned)minor);
+
+    // Saturates rather than wraps, so a client hammering us never ends up owed
+    // fewer answers than it asked for.
+    if (s_handshakes_due < UINT8_MAX) {
+        s_handshakes_due++;
+    }
+    return true;
 }
 
 static void on_readable(void)
@@ -222,7 +254,11 @@ static void on_readable(void)
             break;
         }
 
-        if (type == SERVER_MSG_TYPE_REQUEST && payload_len == SERVER_REQUEST_LEN) {
+        if (type == SERVER_MSG_TYPE_HANDSHAKE && payload_len == SERVER_HANDSHAKE_LEN) {
+            if (!handle_handshake(s_rx + SERVER_HEADER_LEN)) {
+                return;
+            }
+        } else if (type == SERVER_MSG_TYPE_REQUEST && payload_len == SERVER_REQUEST_LEN) {
             handle_request(s_rx + SERVER_HEADER_LEN);
         } else {
             ESP_LOGW(TAG, "ignoring message type %u with a %u byte payload",
@@ -250,6 +286,9 @@ static void capture_frame(uint32_t request_id)
         return;
     }
 
+    // s_msg is deliberately left alone: a handshake answer may be halfway out,
+    // and truncating it would corrupt the stream. The first chunk is built once
+    // that message is done.
     s_frame = jpeg;
     s_frame_len = jpeg_len;
     s_frame_sent = 0;
@@ -257,8 +296,6 @@ static void capture_frame(uint32_t request_id)
     s_chunk = 0;
     s_frame_ts = (uint32_t)esp_timer_get_time();
     s_frame_request_id = request_id;
-    s_msg_len = 0;
-    s_msg_off = 0;
 
     ESP_LOGI(TAG, "frame %u: %u bytes, %dx%d, request 0x%08x",
              (unsigned)s_frame_num, (unsigned)jpeg_len, width, height, (unsigned)s_frame_request_id);
@@ -295,33 +332,65 @@ static void build_chunk(void)
     s_chunk++;
 }
 
+static void build_handshake(void)
+{
+    s_msg[0] = SERVER_MAGIC;
+    s_msg[1] = SERVER_MSG_TYPE_HANDSHAKE;
+    put_u16(s_msg + 2, SERVER_HANDSHAKE_LEN);
+
+    uint8_t *payload = s_msg + SERVER_HEADER_LEN;
+    put_u16(payload, SERVER_VERSION_MAJOR);
+    put_u16(payload + 2, SERVER_VERSION_MINOR);
+
+    s_msg_len = SERVER_HEADER_LEN + SERVER_HANDSHAKE_LEN;
+    s_msg_off = 0;
+    s_handshakes_due--;
+}
+
+// True while there is anything left to write: a message half sent, a handshake
+// to answer or a frame to chunk out.
+static bool tx_pending(void)
+{
+    return s_msg_off < s_msg_len || s_handshakes_due > 0 || s_frame != NULL;
+}
+
+// Pushes out at most one slice of the current message and returns, so that the
+// select loop keeps turning while a frame is going out and requests arriving in
+// the middle of it are still read.
 static void on_writable(void)
 {
-    while (s_frame) {
-        if (s_msg_off == s_msg_len) {
-            if (s_last_built) {
-                release_frame();
-                s_frame_num++;
-                return;
-            }
+    if (s_msg_off == s_msg_len) {
+        // Only at a message boundary, since messages never interleave. An
+        // answer goes out ahead of the next chunk: it is tiny and the client
+        // may be holding off on its first request until it arrives.
+        if (s_handshakes_due > 0) {
+            build_handshake();
+        } else if (s_frame) {
             build_chunk();
-        }
-
-        ssize_t sent = send(s_client, s_msg + s_msg_off, s_msg_len - s_msg_off, 0);
-        if (sent > 0) {
-            s_msg_off += (size_t)sent;
-            continue;
-        }
-        if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-            // Send buffer full, select() tells us when to resume.
+        } else {
             return;
         }
-        if (sent < 0 && errno == EINTR) {
-            continue;
+    }
+
+    ssize_t sent = send(s_client, s_msg + s_msg_off, s_msg_len - s_msg_off, 0);
+    if (sent < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+            // Send buffer full or call interrupted, select() tells us when to
+            // resume.
+            return;
         }
         ESP_LOGW(TAG, "send failed: %d", errno);
         close_client();
         return;
+    }
+
+    s_msg_off += (size_t)sent;
+    // s_last_built only holds while the last chunk of a frame is in flight,
+    // since it is cleared right here as soon as that chunk is out. A handshake
+    // answer can therefore never be mistaken for the end of a frame.
+    if (s_msg_off == s_msg_len && s_last_built) {
+        release_frame();
+        s_frame_num++;
     }
 }
 
@@ -344,7 +413,7 @@ static void server_task(void *arg)
             // socket stays out of the set and further connections wait in the
             // backlog.
             FD_SET(s_client, &read_fds);
-            if (s_frame) {
+            if (tx_pending()) {
                 FD_SET(s_client, &write_fds);
             }
             max_fd = s_client;
