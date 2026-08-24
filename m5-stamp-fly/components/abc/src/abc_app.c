@@ -1,5 +1,5 @@
 /*
- *  app.c
+ *  abc_app.c
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -13,11 +13,11 @@
 #include <string.h>
 #include <stdio.h>
 #include "gmutil.h"
-#include "app.h"
-#include "cli.h"
-#include "mod.h"
-#include "cmd.h"
-#include "reg.h"
+#include "abc_app.h"
+#include "abc_cli.h"
+#include "abc_mod.h"
+#include "abc_cmd.h"
+#include "abc_reg.h"
 
 
 /*** literals ***/

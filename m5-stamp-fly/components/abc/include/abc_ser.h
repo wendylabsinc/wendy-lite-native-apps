@@ -1,5 +1,5 @@
 /*
- *  ser.h
+ *  abc_ser.h
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -7,11 +7,11 @@
  *
  */
 
-#ifndef _SER_H_
-#define _SER_H_
+#ifndef _ABC_SER_H_
+#define _ABC_SER_H_
 
-#include "mod.h"
-#include "cli.h"
+#include "abc_mod.h"
+#include "abc_cli.h"
 
 
 /*** globals ***/

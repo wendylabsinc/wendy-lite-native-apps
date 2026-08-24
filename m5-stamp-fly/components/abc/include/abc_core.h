@@ -1,5 +1,5 @@
 /*
- *  core.h
+ *  abc_core.h
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -7,14 +7,14 @@
  *
  */
 
-#ifndef _CORE_H_
-#define _CORE_H_
+#ifndef _ABC_CORE_H_
+#define _ABC_CORE_H_
 
 #include <stdint.h>
 #ifndef __cplusplus
 #include <stdatomic.h>
 #endif
-#include "mod.h"
+#include "abc_mod.h"
 
 
 /*** globals ***/

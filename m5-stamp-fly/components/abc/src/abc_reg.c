@@ -1,5 +1,5 @@
 /*
- *  reg.c
+ *  abc_reg.c
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -12,8 +12,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdbool.h>
-#include "reg.h"
-#include "mod.h"
+#include "abc_reg.h"
+#include "abc_mod.h"
 
 
 const char *reg_type_str(const struct reg_def *def)

@@ -1,5 +1,5 @@
 /*
- *  reg.h
+ *  abc_reg.h
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -7,12 +7,12 @@
  *
  */
 
-#ifndef _REG_H_
-#define _REG_H_
+#ifndef _ABC_REG_H_
+#define _ABC_REG_H_
 
 #include <stdint.h>
 #include <string.h>
-#include "mod.h" // cross referenced
+#include "abc_mod.h" // cross referenced
 
 
 /*** types ***/

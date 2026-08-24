@@ -1,5 +1,5 @@
 /*
- *  cmd.h
+ *  abc_cmd.h
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -7,10 +7,10 @@
  *
  */
 
-#ifndef _CMD_H_
-#define _CMD_H_
+#ifndef _ABC_CMD_H_
+#define _ABC_CMD_H_
 
-#include "mod.h" // cross referenced
+#include "abc_mod.h" // cross referenced
 
 
 /*** types ***/

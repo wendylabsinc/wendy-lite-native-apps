@@ -11,12 +11,12 @@
 #include "freertos/task.h"
 #include "gmutil.h"
 #include "cockpit.h"
-#include "app.h"
-#include "cli.h"
-#include "con.h"
-#include "core.h"
+#include "abc_app.h"
+#include "abc_cli.h"
+#include "abc_con.h"
+#include "abc_core.h"
 #include "ctrl.h"
-#include "gen.h"
+#include "abc_gen.h"
 
 
 /*** globals ***/

@@ -10,7 +10,7 @@
 #ifndef _CTRL_H_
 #define _CTRL_H_
 
-#include "mod.h"
+#include "abc_mod.h"
 
 
 /*** globals ***/

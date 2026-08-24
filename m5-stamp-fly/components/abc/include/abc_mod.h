@@ -1,5 +1,5 @@
 /*
- *  mod.h
+ *  abc_mod.h
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -7,11 +7,11 @@
  *
  */
 
-#include "reg.h" // cross referenced
-#include "cmd.h" // cross referenced
+#include "abc_reg.h" // cross referenced
+#include "abc_cmd.h" // cross referenced
 
-#ifndef _MOD_H_
-#define _MOD_H_
+#ifndef _ABC_MOD_H_
+#define _ABC_MOD_H_
 
 #include <stdbool.h>
 

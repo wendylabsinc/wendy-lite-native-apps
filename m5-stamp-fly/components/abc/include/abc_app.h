@@ -1,5 +1,5 @@
 /*
- *  app.h
+ *  abc_app.h
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -7,10 +7,10 @@
  *
  */
 
-#ifndef _APP_H_
-#define _APP_H_
+#ifndef _ABC_APP_H_
+#define _ABC_APP_H_
 
-#include "mod.h"
+#include "abc_mod.h"
 
 
 /*** types ***/

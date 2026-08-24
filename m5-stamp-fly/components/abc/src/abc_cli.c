@@ -1,5 +1,5 @@
 /*
- *  cli.c
+ *  abc_cli.c
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -10,10 +10,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
-#include "cli.h"
-#include "mod.h"
+#include "abc_cli.h"
+#include "abc_mod.h"
 #include "gmutil.h"
-#include "core.h"
+#include "abc_core.h"
 
 
 /*** literals ***/

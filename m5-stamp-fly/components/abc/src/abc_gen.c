@@ -1,5 +1,5 @@
 /*
- *  gen.c
+ *  abc_gen.c
  *
  *  Copyright (c) 2026 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -11,10 +11,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "gmutil.h"
-#include "gen.h"
-#include "app.h"
-#include "core.h"
-#include "cli.h"
+#include "abc_gen.h"
+#include "abc_app.h"
+#include "abc_core.h"
+#include "abc_cli.h"
 
 
 /*** types ***/

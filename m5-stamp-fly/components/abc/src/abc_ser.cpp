@@ -1,5 +1,5 @@
 /*
- *  ser.cpp
+ *  abc_ser.cpp
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -10,9 +10,9 @@
 #include <Arduino.h>
 
 extern "C" {
-#include "ser.h"
-#include "cli.h"
-#include "mod.h"
+#include "abc_ser.h"
+#include "abc_cli.h"
+#include "abc_mod.h"
 }
 
 // CLI port: USBSerial (USB Serial/JTAG) by default; override with -DSER_PORT=Serial for UART0

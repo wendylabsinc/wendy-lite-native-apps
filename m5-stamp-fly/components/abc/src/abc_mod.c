@@ -1,5 +1,5 @@
 /*
- *  mod.c
+ *  abc_mod.c
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -9,7 +9,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
-#include "mod.h"
+#include "abc_mod.h"
 
 
 /**

@@ -1,5 +1,5 @@
 /*
- *  cli.h
+ *  abc_cli.h
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -7,8 +7,8 @@
  *
  */
 
-#ifndef _CLI_H_
-#define _CLI_H_
+#ifndef _ABC_CLI_H_
+#define _ABC_CLI_H_
 
 #include <stdbool.h>
 

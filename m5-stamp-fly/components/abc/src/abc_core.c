@@ -1,5 +1,5 @@
 /*
- *  core.c
+ *  abc_core.c
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -10,9 +10,10 @@
 #include <sys/stat.h>
 #include <stddef.h>
 #include <stdio.h>
-#include "core.h"
+#include "abc_core.h"
 #include "gmutil.h"
-#ifdef ARDUINO
+// under ESP-IDF, use the native API even when arduino-esp32 is in the build
+#if defined(ARDUINO) && !defined(ESP_PLATFORM)
 #include <Arduino.h>
 #else
 #include "esp_timer.h"
@@ -99,7 +100,7 @@ void core_system_reset(void)
 
 int32_t core_get_tick(void)
 {
-#ifdef ARDUINO
+#if defined(ARDUINO) && !defined(ESP_PLATFORM)
     return millis();
 #else
     return (int32_t)(esp_timer_get_time() / 1000);

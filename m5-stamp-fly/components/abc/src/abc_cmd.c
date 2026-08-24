@@ -1,5 +1,5 @@
 /*
- *  cmd.c
+ *  abc_cmd.c
  *
  *  Copyright (c) 2019 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -8,7 +8,7 @@
  */
 
 #include <stdio.h>
-#include "cmd.h"
+#include "abc_cmd.h"
 
 
 void cmd_help(const struct cmd_def *cmd_list, int cmd_count, int indent)

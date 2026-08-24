@@ -1,5 +1,5 @@
 /*
- *  con.c
+ *  abc_con.c
  *
  *  Copyright (c) 2026 Gabriele Mondada.
  *  This software is distributed under the terms of the MIT license.
@@ -11,9 +11,9 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "con.h"
-#include "cli.h"
-#include "mod.h"
+#include "abc_con.h"
+#include "abc_cli.h"
+#include "abc_mod.h"
 
 
 /*** globals ***/
