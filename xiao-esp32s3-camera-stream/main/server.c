@@ -30,6 +30,10 @@ static const char *TAG = "server";
 // the device and the extra requests are refused.
 #define SERVER_REQUEST_QUEUE_LEN 8
 
+// How many command answers may wait to be written out. Commands are rare next
+// to frames, so a short queue is plenty.
+#define SERVER_ANSWER_QUEUE_LEN 4
+
 #define SERVER_MDNS_INSTANCE "AV Source"
 #define SERVER_MDNS_SERVICE "_wendy_lite_av_source"
 #define SERVER_MDNS_PROTO "_tcp"
@@ -49,6 +53,19 @@ static size_t s_request_count;
 
 // Handshakes received and not answered yet.
 static uint8_t s_handshakes_due;
+
+// A command answer owed to the client. The body is not held here: it is built
+// from the command id when the message goes out.
+typedef struct {
+    uint32_t request_id;
+    uint16_t command_id;
+    bool error;
+} answer_t;
+
+// Commands received and not answered yet, oldest first.
+static answer_t s_answers[SERVER_ANSWER_QUEUE_LEN];
+static size_t s_answer_head;
+static size_t s_answer_count;
 
 // Frame being chunked out, owned by this module.
 static uint8_t *s_frame;
@@ -109,6 +126,30 @@ static uint32_t pop_request(void)
     return request_id;
 }
 
+static bool push_answer(uint32_t request_id, uint16_t command_id, bool error)
+{
+    if (s_answer_count == SERVER_ANSWER_QUEUE_LEN) {
+        return false;
+    }
+
+    s_answers[(s_answer_head + s_answer_count) % SERVER_ANSWER_QUEUE_LEN] = (answer_t){
+        .request_id = request_id,
+        .command_id = command_id,
+        .error = error,
+    };
+    s_answer_count++;
+    return true;
+}
+
+// Only valid while the queue is not empty.
+static answer_t pop_answer(void)
+{
+    answer_t answer = s_answers[s_answer_head];
+    s_answer_head = (s_answer_head + 1) % SERVER_ANSWER_QUEUE_LEN;
+    s_answer_count--;
+    return answer;
+}
+
 static void release_frame(void)
 {
     if (s_frame) {
@@ -134,6 +175,8 @@ static void close_client(void)
     s_rx_len = 0;
     s_request_head = 0;
     s_request_count = 0;
+    s_answer_head = 0;
+    s_answer_count = 0;
     s_handshakes_due = 0;
     release_frame();
 }
@@ -167,6 +210,8 @@ static void accept_client(void)
     s_rx_len = 0;
     s_request_head = 0;
     s_request_count = 0;
+    s_answer_head = 0;
+    s_answer_count = 0;
     s_handshakes_due = 0;
     s_frame_num = 0;
 
@@ -188,6 +233,37 @@ static void handle_request(const uint8_t *payload)
     if (!push_request(request_id)) {
         ESP_LOGW(TAG, "dropping request 0x%08x, %d are already queued",
                  (unsigned)request_id, SERVER_REQUEST_QUEUE_LEN);
+    }
+}
+
+static void handle_command(const uint8_t *payload)
+{
+    uint32_t request_id = get_u32(payload);
+    uint16_t chunk_and_flags = get_u16(payload + 4);
+    uint16_t command_id = get_u16(payload + 6);
+
+    // Only a request is ours to act on: an answer is what we send, and an event
+    // is reserved for a future version of the protocol.
+    bool is_request = (chunk_and_flags & SERVER_COMMAND_FLAG_ANSWER_EXPECTED) &&
+                      !(chunk_and_flags & SERVER_COMMAND_FLAG_ANSWER);
+    // Single chunk commands only, so a whole command is chunk 0 and the last
+    // one. Anything else would need a body reassembled across messages.
+    bool is_whole = (chunk_and_flags & SERVER_COMMAND_FLAG_LAST_CHUNK) &&
+                    (chunk_and_flags & SERVER_COMMAND_CHUNK_MASK) == 0;
+    if (!is_request || !is_whole) {
+        ESP_LOGW(TAG, "ignoring command 0x%04x with chunk and flags 0x%04x",
+                 (unsigned)command_id, (unsigned)chunk_and_flags);
+        return;
+    }
+
+    bool error = command_id != SERVER_COMMAND_PING && command_id != SERVER_COMMAND_CHANNELS;
+    if (error) {
+        ESP_LOGW(TAG, "unknown command 0x%04x, answering with the error bit", (unsigned)command_id);
+    }
+
+    if (!push_answer(request_id, command_id, error)) {
+        ESP_LOGW(TAG, "dropping command 0x%04x, %d answers are already queued",
+                 (unsigned)command_id, SERVER_ANSWER_QUEUE_LEN);
     }
 }
 
@@ -258,6 +334,10 @@ static void on_readable(void)
             if (!handle_handshake(s_rx + SERVER_HEADER_LEN)) {
                 return;
             }
+        } else if (type == SERVER_MSG_TYPE_COMMAND && payload_len >= SERVER_COMMAND_HEADER_LEN) {
+            // A minimum rather than an exact size: a command carries a body, and
+            // one we do not know may carry more than we would expect.
+            handle_command(s_rx + SERVER_HEADER_LEN);
         } else if (type == SERVER_MSG_TYPE_REQUEST && payload_len == SERVER_REQUEST_LEN) {
             handle_request(s_rx + SERVER_HEADER_LEN);
         } else {
@@ -332,6 +412,53 @@ static void build_chunk(void)
     s_chunk++;
 }
 
+// Writes the body of a channel enumeration answer and returns its size. The
+// device always serves the same single video channel, so the list is fixed.
+static size_t build_channel_list(uint8_t *body)
+{
+    body[0] = SERVER_CHANNEL_VIDEO;
+    body[1] = SERVER_CHANNEL_VARIANT_VIDEO;
+    body[2] = SERVER_CHANNEL_CATEGORY_VIDEO;
+    // Size of the properties below, which a reader rounds up to a multiple of 4
+    // to find the next element. 8 needs no padding; a property added here that
+    // makes the size odd would.
+    body[3] = 8;
+    put_u32(body + 4, SERVER_MEDIA_TYPE_MJPG);
+    put_u16(body + 8, SERVER_VIDEO_WIDTH);
+    put_u16(body + 10, SERVER_VIDEO_HEIGHT);
+    return 12;
+}
+
+static void build_command_answer(void)
+{
+    answer_t answer = pop_answer();
+    uint8_t *payload = s_msg + SERVER_HEADER_LEN;
+
+    // A ping and an error answer carry nothing; only the channel list has a
+    // body, and it is a single chunk like every answer we send.
+    size_t body_len = 0;
+    if (!answer.error && answer.command_id == SERVER_COMMAND_CHANNELS) {
+        body_len = build_channel_list(payload + SERVER_COMMAND_HEADER_LEN);
+    }
+
+    // An answer to a command, whole in one chunk, so the chunk number stays 0.
+    uint16_t chunk_and_flags = SERVER_COMMAND_FLAG_ANSWER_EXPECTED | SERVER_COMMAND_FLAG_ANSWER |
+                               SERVER_COMMAND_FLAG_LAST_CHUNK;
+    if (answer.error) {
+        chunk_and_flags |= SERVER_COMMAND_FLAG_ERROR;
+    }
+
+    s_msg[0] = SERVER_MAGIC;
+    s_msg[1] = SERVER_MSG_TYPE_COMMAND;
+    put_u16(s_msg + 2, (uint16_t)(SERVER_COMMAND_HEADER_LEN + body_len));
+    put_u32(payload, answer.request_id);
+    put_u16(payload + 4, chunk_and_flags);
+    put_u16(payload + 6, answer.command_id);
+
+    s_msg_len = SERVER_HEADER_LEN + SERVER_COMMAND_HEADER_LEN + body_len;
+    s_msg_off = 0;
+}
+
 static void build_handshake(void)
 {
     s_msg[0] = SERVER_MAGIC;
@@ -348,10 +475,10 @@ static void build_handshake(void)
 }
 
 // True while there is anything left to write: a message half sent, a handshake
-// to answer or a frame to chunk out.
+// or a command to answer, or a frame to chunk out.
 static bool tx_pending(void)
 {
-    return s_msg_off < s_msg_len || s_handshakes_due > 0 || s_frame != NULL;
+    return s_msg_off < s_msg_len || s_handshakes_due > 0 || s_answer_count > 0 || s_frame != NULL;
 }
 
 // Pushes out at most one slice of the current message and returns, so that the
@@ -365,6 +492,8 @@ static void on_writable(void)
         // may be holding off on its first request until it arrives.
         if (s_handshakes_due > 0) {
             build_handshake();
+        } else if (s_answer_count > 0) {
+            build_command_answer();
         } else if (s_frame) {
             build_chunk();
         } else {
@@ -387,7 +516,7 @@ static void on_writable(void)
     s_msg_off += (size_t)sent;
     // s_last_built only holds while the last chunk of a frame is in flight,
     // since it is cleared right here as soon as that chunk is out. A handshake
-    // answer can therefore never be mistaken for the end of a frame.
+    // or command answer can therefore never be mistaken for the end of a frame.
     if (s_msg_off == s_msg_len && s_last_built) {
         release_frame();
         s_frame_num++;

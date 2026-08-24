@@ -7,7 +7,7 @@ time. The client drives the exchange, asking for media a frame at a time.
 The service is advertised over mDNS with service type
 `_wendy_lite_av_source._tcp`.
 
-The current protocol version is 1.0.
+The current protocol version is 1.1.
 
 ## Message framing
 
@@ -34,12 +34,12 @@ frame, but never inside one.
 | --- | --- | --- |
 | 0 | handshake | client to device, answered by the device |
 | 1 | reserved | |
-| 2 | reserved | |
+| 2 | command | client to device, answered by the device |
 | 3 | request | client to device |
 | 4 | data | device to client |
 
-Types 1 and 2 are reserved for future use. A receiver ignores messages of an
-unknown type, using the payload size to skip over them.
+Type 1 is reserved for future use. A receiver ignores messages of an unknown
+type, using the payload size to skip over them.
 
 ## Type 0 — handshake
 
@@ -58,6 +58,157 @@ connection, without answering. No other version check is part of the protocol:
 what a client does with the version it reads back is up to the client.
 
 The handshake is optional. A client that never sends one is served normally.
+
+## Type 2 — command
+
+Carries a small control exchange, aside from the media stream. 8 byte payload
+header followed by a command body.
+
+| Offset | Size | Field |
+| --- | --- | --- |
+| 0 | 4 | request id |
+| 4 | 2 | chunk and flags |
+| 6 | 2 | command id |
+| 8 | … | command body |
+
+The chunk and flags field holds, from the most significant bit:
+
+| Bits | Field |
+| --- | --- |
+| 15 | 0 = event, no answer expected; 1 = command, an answer is expected |
+| 14 | 0 = request, 1 = answer |
+| 13 | error, only meaningful in an answer |
+| 12 | last_chunk |
+| 11–0 | chunk number |
+
+The two top bits give the category of the message:
+
+| Bit 15 | Bit 14 | Category |
+| --- | --- | --- |
+| 0 | 0 | event, no answer |
+| 1 | 0 | request, answered |
+| 1 | 1 | answer |
+| 0 | 1 | reserved, ignored |
+
+The encoding carries a command in either direction, and this version only
+defines the client sending requests and the device answering them. Events, and
+commands sent by the device, are reserved for a future version: a peer does not
+emit them, and ignores a command whose category it does not handle.
+
+The request id is chosen by the sender and opaque to the receiver, which only
+repeats it. It has nothing to do with the request id of a type 3 message; the
+two live in separate spaces.
+
+An answer repeats the request id and the command id of the request it answers,
+with bit 14 set, and keeps bit 15 set. Several requests may be outstanding, and
+answers may come back in any order, so a sender matches them on the request id.
+
+The error bit is sent as zero in a request or an event. In an answer it says the
+command was not carried out, either because the command id is unknown or because
+it is known and failed. Such an answer carries an empty body, and a body sent
+anyway is ignored. There is no error code: the protocol says only that it
+failed.
+
+The chunk number and last_chunk are there so that a later version can send a
+body as a run of chunks. This version defines a single chunk only: a request and
+an answer alike are one message, carrying the chunk number 0 with last_chunk
+set. A receiver ignores a command message that carries another chunk number, or
+one without last_chunk.
+
+The size of the body is the payload size minus 8, so a body is at most 1396
+bytes. An empty body — a ping, an error answer — is a chunk with no body bytes
+at all. A command message with a payload shorter than 8 bytes is ignored, like a
+message of an unknown type.
+
+A device that has more command requests outstanding than it can hold discards
+the extra ones, and the protocol has no message to report that, so a client has
+to tolerate a request that is never answered.
+
+| Command | Name |
+| --- | --- |
+| 0 | ping |
+| 1 | channel enumeration |
+
+All other command ids are unassigned.
+
+### Command 0 — ping
+
+Empty body, in the request and in the answer. Checks that the device is alive
+and measures the round trip.
+
+### Command 1 — channel enumeration
+
+Asks for the channels the device serves. The request body is empty.
+
+The answer body is a list of elements, one per channel variant, in ascending
+channel order and, within a channel, in ascending variant order. The number of
+elements follows from the size of the body.
+
+| Offset | Size | Field |
+| --- | --- | --- |
+| 0 | 1 | channel number |
+| 1 | 1 | variant |
+| 2 | 1 | channel category |
+| 3 | 1 | size of the properties that follow |
+| 4 | … | properties |
+
+A variant is one rendition of the source a channel carries: the same thing in
+another media type, another frame size or another quality. The category and the
+properties of two variants of a channel may therefore differ.
+
+This version defines the variant 0 only, so a device sends exactly one element
+per channel and that element carries the variant 0. Selecting which variant a
+channel serves is left to a command reserved for a future version. A type 3
+request and a type 4 data message address the channel alone and carry whatever
+variant the channel serves, which in this version is always the variant 0. A
+client leaves alone an element whose variant is not 0, since this version gives
+it no way to ask for that variant.
+
+The property size does not count the four bytes above it. A reader uses it to
+skip properties it does not know, so a later version may append properties to a
+category without breaking an older reader.
+
+The properties of an element are packed one after the other, with no alignment
+of their own. Only the block they form is padded, up to the next 32 bit
+boundary, so that the next element starts aligned — which holds on the wire,
+since the body itself starts 12 bytes into the message. That padding is not
+counted in the property size: a size of 14 is followed by 2 bytes of padding,
+and a reader skips the size rounded up to a multiple of 4 to reach the next
+element. A size already a multiple of 4 is followed by no padding. Padding is
+sent as zero and ignored on receipt.
+
+Channel categories:
+
+| Value | Category |
+| --- | --- |
+| 0 | time |
+| 1 | video |
+| 2 | audio |
+
+Properties are positional, not tagged: a category defines its properties in a
+fixed order, and a later version only appends to it. Every category starts with
+the media type.
+
+| Offset | Size | Property |
+| --- | --- | --- |
+| 0 | 4 | media type, a four character code |
+
+A video channel adds the frame size, so its properties are 8 bytes.
+
+| Offset | Size | Property |
+| --- | --- | --- |
+| 4 | 2 | width in pixels |
+| 6 | 2 | height in pixels |
+
+A time or audio channel defines nothing beyond the media type yet, so its
+properties are 4 bytes.
+
+| Media type | Medium |
+| --- | --- |
+| `MJPG` | one JPEG image per frame |
+
+All other media types are unassigned. A client leaves alone a channel whose
+category or media type it does not know.
 
 ## Type 3 — request
 
@@ -110,12 +261,11 @@ has sent, whatever the channel.
 
 ## Channels
 
-| Channel | Medium |
-| --- | --- |
-| 1 | video, one JPEG image per frame |
+No channel number carries a fixed medium. Which channels a device serves, and
+what each one carries, is read from the channel enumeration. A device ignores a
+request on a channel it does not serve.
 
-All other channel values are reserved. A device ignores a request on a channel
-it does not serve.
+Channel 0 is reserved and never used.
 
 ## Timestamps
 

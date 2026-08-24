@@ -23,15 +23,40 @@ extern "C" {
 #define SERVER_MAGIC 0xAF
 #define SERVER_HEADER_LEN 4
 
-/* Types 1 and 2 are reserved for future use. */
+/* Type 1 is reserved for future use. */
 #define SERVER_MSG_TYPE_HANDSHAKE 0
+#define SERVER_MSG_TYPE_COMMAND 2
 #define SERVER_MSG_TYPE_REQUEST 3
 #define SERVER_MSG_TYPE_DATA 4
 
 #define SERVER_VERSION_MAJOR 1
-#define SERVER_VERSION_MINOR 0
+#define SERVER_VERSION_MINOR 1
+
+#define SERVER_COMMAND_HEADER_LEN 8
+
+#define SERVER_COMMAND_PING 0
+#define SERVER_COMMAND_CHANNELS 1
+
+/* Bits of the chunk and flags field of a command. The chunk number occupies the
+ * low 12 bits; only single chunk commands, numbered 0, are supported. */
+#define SERVER_COMMAND_FLAG_ANSWER_EXPECTED 0x8000
+#define SERVER_COMMAND_FLAG_ANSWER 0x4000
+#define SERVER_COMMAND_FLAG_ERROR 0x2000
+#define SERVER_COMMAND_FLAG_LAST_CHUNK 0x1000
+#define SERVER_COMMAND_CHUNK_MASK 0x0fff
 
 #define SERVER_CHANNEL_VIDEO 1
+#define SERVER_CHANNEL_CATEGORY_VIDEO 1
+
+/* The only variant this version of the protocol defines, so the one every
+ * channel is enumerated with. */
+#define SERVER_CHANNEL_VARIANT_VIDEO 0
+
+/* What the channel enumeration reports for the video channel. 'MJPG', and the
+ * frame size the camera is configured for in cam_capture.c. */
+#define SERVER_MEDIA_TYPE_MJPG 0x4d4a5047
+#define SERVER_VIDEO_WIDTH 800
+#define SERVER_VIDEO_HEIGHT 600
 
 /* Header and payload together, so a message still fits in a single TCP
  * segment. */
