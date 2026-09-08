@@ -1,9 +1,5 @@
-# Flash size - keep at 4 MB; partitions.csv is sized accordingly.
+# Flash size: 4 MB
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
-
-# Partition table - custom CSV with single WASM slot
-CONFIG_PARTITION_TABLE_CUSTOM=y
-CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
 # Move WiFi/PHY hot paths from IRAM to flash (frees ~15-25 KB DIRAM)
 CONFIG_ESP_WIFI_IRAM_OPT=n
@@ -18,9 +14,16 @@ CONFIG_BT_ENABLED=y
 CONFIG_BT_NIMBLE_ENABLED=y
 CONFIG_BT_NIMBLE_MAX_CONNECTIONS=2
 
+# Tune NimBLE buffer pools (sized for max 2 connections). These apply
+# regardless of whether the controller is native or remote.
+CONFIG_BT_NIMBLE_MSYS_1_BLOCK_COUNT=12
+CONFIG_BT_NIMBLE_MSYS_2_BLOCK_COUNT=12
+CONFIG_BT_NIMBLE_TRANSPORT_ACL_FROM_LL_COUNT=8
+CONFIG_BT_NIMBLE_TRANSPORT_EVT_COUNT=12
+CONFIG_BT_NIMBLE_TRANSPORT_EVT_DISCARD_COUNT=4
+
 # mbedTLS memory — dynamic buffers avoid a large upfront allocation at ssl_setup
-# time. Without this, mbedtls_ssl_setup fails with MBEDTLS_ERR_SSL_ALLOC_FAILED
-# (-0x7F00) because WiFi+BLE+WAMR leave insufficient contiguous heap.
+# time.
 CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
 CONFIG_MBEDTLS_DYNAMIC_FREE_PEER_CERT=y
 CONFIG_MBEDTLS_DYNAMIC_FREE_CONFIG_DATA=y
@@ -28,11 +31,9 @@ CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=8192
 
 # Console over UART (compatible with Wokwi and most debug setups)
 CONFIG_ESP_CONSOLE_UART_DEFAULT=y
-# Disable ROM secondary console so the wendy_usj buffered driver owns the USB
-# Serial/JTAG peripheral exclusively (no TX FIFO conflict with esp_rom_usb_serial_putc).
+# Disable ROM secondary console so the wendy_core/wendy_usj buffered driver owns
+# the USB Serial/JTAG peripheral exclusively.
 CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
-
-# --- Memory optimizations ---
 
 # Size-optimized build (-Os instead of -Og)
 CONFIG_COMPILER_OPTIMIZATION_SIZE=y
@@ -41,11 +42,3 @@ CONFIG_COMPILER_OPTIMIZATION_ASSERTION_LEVEL=1
 
 # Disable stack overflow canary (saves RAM per task)
 CONFIG_FREERTOS_CHECK_STACKOVERFLOW_NONE=y
-
-# Tune NimBLE buffer pools (sized for max 2 connections). These apply
-# regardless of whether the controller is native or remote.
-CONFIG_BT_NIMBLE_MSYS_1_BLOCK_COUNT=12
-CONFIG_BT_NIMBLE_MSYS_2_BLOCK_COUNT=12
-CONFIG_BT_NIMBLE_TRANSPORT_ACL_FROM_LL_COUNT=8
-CONFIG_BT_NIMBLE_TRANSPORT_EVT_COUNT=12
-CONFIG_BT_NIMBLE_TRANSPORT_EVT_DISCARD_COUNT=4
