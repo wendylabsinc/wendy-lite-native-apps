@@ -1,6 +1,6 @@
-# blink-rgb-swift
+# Blink Demo in Swift using RGB LED (WS2812)
 
-Wendy Lite native app written in Swift
+Simple Wendy Lite native app written in Swift
 
 ### Swift compiler
 
