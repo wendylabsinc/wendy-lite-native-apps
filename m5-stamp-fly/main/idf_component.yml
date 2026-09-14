@@ -4,5 +4,5 @@ dependencies:
   espressif/arduino-esp32:
     version: "^3.3.11"
   wendy_core:
-    git: "git@github.com:wendylabsinc/wendy-lite.git"
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
     path: "components/wendy_core"

@@ -1,9 +1,5 @@
 {
-  "appId": "blink-arduino",
+  "appId": "com.example.blink-arduino",
   "version": "0.1.0",
-  "entitlements": [
-    {
-      "type": "network"
-    }
-  ]
+  "platform": "wendy-lite"
 }

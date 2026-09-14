@@ -1,9 +1,5 @@
 {
-  "appId": "m5-stamp-fly",
+  "appId": "com.example.m5-stamp-fly",
   "version": "0.1.0",
-  "entitlements": [
-    {
-      "type": "network"
-    }
-  ]
+  "platform": "wendy-lite"
 }

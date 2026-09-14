@@ -1,9 +1,5 @@
 {
-  "appId": "blink-rgb-swift",
+  "appId": "com.example.blink-rgb-swift",
   "version": "0.1.0",
-  "entitlements": [
-    {
-      "type": "network"
-    }
-  ]
+  "platform": "wendy-lite"
 }

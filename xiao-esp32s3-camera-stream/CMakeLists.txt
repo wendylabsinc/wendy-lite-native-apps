@@ -16,4 +16,4 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 #)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(xiao-esp32s3-camera)
+project(xiao-esp32s3-camera-stream)

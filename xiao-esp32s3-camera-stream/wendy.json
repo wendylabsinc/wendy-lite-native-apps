@@ -1,9 +1,5 @@
 {
-  "appId": "xiao-esp32s3-camera",
+  "appId": "com.example.xiao-esp32s3-camera-stream",
   "version": "0.1.0",
-  "entitlements": [
-    {
-      "type": "network"
-    }
-  ]
+  "platform": "wendy-lite"
 }
