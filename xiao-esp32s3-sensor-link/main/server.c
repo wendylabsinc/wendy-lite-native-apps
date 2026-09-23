@@ -7,7 +7,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "lwip/inet.h"
@@ -50,8 +49,8 @@ static size_t s_request_count;
 // Handshakes received and not answered yet.
 static uint8_t s_handshakes_due;
 
-// Frame being chunked out, owned by this module.
-static uint8_t *s_frame;
+// Frame being chunked out, borrowed from cam_capture until release_frame().
+static const uint8_t *s_frame;
 static size_t s_frame_len;
 static size_t s_frame_sent;
 static bool s_last_built;
@@ -109,10 +108,14 @@ static uint32_t pop_request(void)
     return request_id;
 }
 
+// This module borrows a frame for the whole chunked transmission, so it holds
+// one of the driver's frame buffers that entire time. Fine as long as it stays
+// the only capturer: main.c leaves server_start() disabled and cam_loop owns
+// the camera instead.
 static void release_frame(void)
 {
     if (s_frame) {
-        heap_caps_free(s_frame);
+        cam_capture_release_frame(s_frame);
         s_frame = NULL;
     }
     s_frame_len = 0;
@@ -275,14 +278,14 @@ static void on_readable(void)
 // the duration of the capture, which is acceptable with a single client.
 static void capture_frame(uint32_t request_id)
 {
-    uint8_t *jpeg = NULL;
+    const uint8_t *jpeg = NULL;
     size_t jpeg_len = 0;
     int width = 0;
     int height = 0;
 
-    esp_err_t err = cam_capture_jpeg(&jpeg, &jpeg_len, &width, &height);
+    esp_err_t err = cam_capture_retrieve_jpeg_frame(&jpeg, &jpeg_len, &width, &height);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "cam_capture_jpeg failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "cam_capture_retrieve_jpeg_frame failed: %s", esp_err_to_name(err));
         return;
     }
 

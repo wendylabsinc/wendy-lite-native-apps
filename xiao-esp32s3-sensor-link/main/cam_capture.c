@@ -1,12 +1,9 @@
 #include "cam_capture.h"
 
-#include <string.h>
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
 #include "esp_camera.h"
-#include "esp_heap_caps.h"
 #include "esp_log.h"
 
 static const char *TAG = "cam_capture";
@@ -30,6 +27,13 @@ static const char *TAG = "cam_capture";
 #define CAM_PIN_VSYNC 38
 #define CAM_PIN_HREF  47
 #define CAM_PIN_PCLK  13
+
+// How many frame buffers the driver owns, and therefore how many frames can be
+// checked out at once: the driver never hands out more than it has. Callers
+// must not hold this many and expect another capture to succeed -- cam_loop
+// borrows one while it captures the next, which is the tightest legitimate
+// use.
+#define CAM_CAPTURE_MAX_INFLIGHT 2
 
 static const camera_config_t s_config = {
     .pin_pwdn = CAM_PIN_PWDN,
@@ -56,11 +60,15 @@ static const camera_config_t s_config = {
     .pixel_format = PIXFORMAT_JPEG,
     .frame_size = FRAMESIZE_SVGA,
     .jpeg_quality = 12,
-    .fb_count = 2,
+    .fb_count = CAM_CAPTURE_MAX_INFLIGHT,
     .fb_location = CAMERA_FB_IN_PSRAM,
     .grab_mode = CAMERA_GRAB_LATEST,
     .sccb_i2c_port = -1,
 };
+
+// Frames handed out and not released yet, so cam_capture_release_frame() can
+// map a JPEG pointer back to the camera_fb_t it came from.
+static camera_fb_t *s_inflight[CAM_CAPTURE_MAX_INFLIGHT];
 
 static SemaphoreHandle_t s_mutex;
 static bool s_initialized;
@@ -96,7 +104,7 @@ esp_err_t cam_capture_init(void)
     return ESP_OK;
 }
 
-esp_err_t cam_capture_jpeg(uint8_t **jpeg, size_t *jpeg_len, int *width, int *height)
+esp_err_t cam_capture_retrieve_jpeg_frame(const uint8_t **jpeg, size_t *jpeg_len, int *width, int *height)
 {
     if (!jpeg || !jpeg_len || !width || !height) {
         return ESP_ERR_INVALID_ARG;
@@ -108,28 +116,64 @@ esp_err_t cam_capture_jpeg(uint8_t **jpeg, size_t *jpeg_len, int *width, int *he
     xSemaphoreTake(s_mutex, portMAX_DELAY);
 
     esp_err_t err = ESP_FAIL;
+
+    // Claim the slot before grabbing a frame: a frame we cannot track is a
+    // frame we could never hand back to the driver.
+    int slot = -1;
+    for (int i = 0; i < CAM_CAPTURE_MAX_INFLIGHT; i++) {
+        if (!s_inflight[i]) {
+            slot = i;
+            break;
+        }
+    }
+    if (slot < 0) {
+        ESP_LOGE(TAG, "all %d frames are still checked out", CAM_CAPTURE_MAX_INFLIGHT);
+        err = ESP_ERR_NO_MEM;
+        goto done;
+    }
+
     camera_fb_t *fb = esp_camera_fb_get();
     if (!fb) {
         ESP_LOGE(TAG, "capture failed");
         goto done;
     }
 
-    // Copy the JPEG so the frame buffer can go back to the driver.
-    uint8_t *buf = heap_caps_malloc(fb->len, MALLOC_CAP_SPIRAM);
-    if (!buf) {
-        esp_camera_fb_return(fb);
-        err = ESP_ERR_NO_MEM;
-        goto done;
-    }
-    memcpy(buf, fb->buf, fb->len);
-    *jpeg = buf;
+    // Hand out the driver's buffer as-is. It goes back to the driver in
+    // cam_capture_release_frame(), not here.
+    s_inflight[slot] = fb;
+    *jpeg = fb->buf;
     *jpeg_len = fb->len;
     *width = fb->width;
     *height = fb->height;
-    esp_camera_fb_return(fb);
     err = ESP_OK;
 
 done:
     xSemaphoreGive(s_mutex);
     return err;
+}
+
+void cam_capture_release_frame(const uint8_t *jpeg)
+{
+    if (!jpeg) {
+        return;
+    }
+
+    bool found = false;
+
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    for (int i = 0; i < CAM_CAPTURE_MAX_INFLIGHT; i++) {
+        if (s_inflight[i] && s_inflight[i]->buf == jpeg) {
+            esp_camera_fb_return(s_inflight[i]);
+            s_inflight[i] = NULL;
+            found = true;
+            break;
+        }
+    }
+    xSemaphoreGive(s_mutex);
+
+    if (!found) {
+        // Either a double release or a pointer from somewhere else. Both are
+        // caller bugs, and both would starve the driver of frame buffers.
+        ESP_LOGE(TAG, "release of a frame we never handed out: %p", jpeg);
+    }
 }

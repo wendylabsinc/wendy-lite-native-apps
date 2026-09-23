@@ -6,7 +6,6 @@
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
 
-#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 
@@ -65,19 +64,19 @@ static void cam_loop_task(void *arg)
         xEventGroupClearBits(s_events, STOP_BIT);
         wendy_core_sensor_stream_begin(client_id, channel_id);
 
-        uint8_t *pending_jpeg = NULL;
+        const uint8_t *pending_jpeg = NULL;
 
         for (;;) {
             if (xEventGroupGetBits(s_events) & STOP_BIT) {
                 break;
             }
 
-            uint8_t *jpeg;
+            const uint8_t *jpeg;
             size_t jpeg_len;
             int width, height;
-            esp_err_t err = cam_capture_jpeg(&jpeg, &jpeg_len, &width, &height);
+            esp_err_t err = cam_capture_retrieve_jpeg_frame(&jpeg, &jpeg_len, &width, &height);
             if (err != ESP_OK) {
-                ESP_LOGW(TAG, "cam_capture_jpeg failed: %s", esp_err_to_name(err));
+                ESP_LOGW(TAG, "cam_capture_retrieve_jpeg_frame failed: %s", esp_err_to_name(err));
                 vTaskDelay(pdMS_TO_TICKS(20));
                 continue;
             }
@@ -89,15 +88,15 @@ static void cam_loop_task(void *arg)
                 EventBits_t bits = xEventGroupWaitBits(s_events, FRAME_DONE_BIT | STOP_BIT, pdFALSE, pdFALSE,
                                                         portMAX_DELAY);
                 if (bits & STOP_BIT) {
-                    heap_caps_free(jpeg);
+                    cam_capture_release_frame(jpeg);
                     break;
                 }
 
-                heap_caps_free(pending_jpeg);
+                cam_capture_release_frame(pending_jpeg);
             } else if (xEventGroupGetBits(s_events) & STOP_BIT) {
                 // Nothing in flight to wait for, but a stop may have arrived
                 // while we were capturing.
-                heap_caps_free(jpeg);
+                cam_capture_release_frame(jpeg);
                 break;
             }
 
@@ -108,9 +107,9 @@ static void cam_loop_task(void *arg)
 
         if (pending_jpeg) {
             // The last frame sent may still be in flight; wait for its done
-            // callback before freeing the buffer it owns.
+            // callback before handing the buffer back.
             xEventGroupWaitBits(s_events, FRAME_DONE_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
-            heap_caps_free(pending_jpeg);
+            cam_capture_release_frame(pending_jpeg);
         }
 
         wendy_core_sensor_stream_end(client_id, channel_id);
