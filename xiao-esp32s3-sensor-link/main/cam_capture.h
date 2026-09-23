@@ -28,7 +28,7 @@ esp_err_t cam_capture_retrieve_jpeg_frame(const uint8_t **jpeg, size_t *jpeg_len
  * driver. The acquire/release pairing is the contract, not an implementation
  * detail: it is what lets a caller work unchanged against a source whose
  * frames must be given back (this one) and one whose frames live in flash and
- * need no releasing at all (senser-link-demo). */
+ * need no releasing at all (sensor-link-demo). */
 void cam_capture_release_frame(const uint8_t *jpeg);
 
 #ifdef __cplusplus
