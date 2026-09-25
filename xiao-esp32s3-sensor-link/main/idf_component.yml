@@ -6,6 +6,6 @@ dependencies:
   espressif/mdns:
     version: "^1.11.0"
   wendy_core:
-    #git: "https://github.com/wendylabsinc/wendy-lite.git"
-    #path: "components/wendy_core"
-    path: "../../../wendy-lite/components/wendy_core"
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/wendy_core"
+    version: "gab/slink-snapshot1"
