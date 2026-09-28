@@ -26,7 +26,6 @@ static enum wcom_sensor_link_result sensor_link_get_manifest(struct wcom_sensor_
 
     sensors[0] = (struct wcom_sensor_descriptor){
         .channel_id = 0,
-        .kind = wendy_lite_sensorlink_SensorDescriptor_Kind_CAMERA,
         .name = "camera",
         .format_kind = WCOM_SENSOR_FORMAT_VIDEO,
         .format.video = {

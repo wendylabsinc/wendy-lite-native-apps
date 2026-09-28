@@ -21,7 +21,7 @@ wendy run
 
 `app_main` registers a sensor-link delegate advertising one `CAMERA` channel
 (channel 0, MJPEG, 800x600). On subscribe, `cam_loop` starts pushing frames
-through `wendy_core_send_jpeg_frame()`, one in flight at a time, cycling through
+through `wendy_core_sensor_stream_push()`, one in flight at a time, cycling through
 the four embedded images; unsubscribe or a dropped client stops it.
 
 `cam_capture` stands in for a camera driver: it exposes the interface a real one

@@ -102,7 +102,7 @@ static void cam_loop_task(void *arg)
 
             pending_jpeg = jpeg;
             xEventGroupClearBits(s_events, FRAME_DONE_BIT);
-            wendy_core_send_jpeg_frame(client_id, channel_id, jpeg, jpeg_len, esp_timer_get_time(), frame_done_cb);
+            wendy_core_sensor_stream_push(client_id, channel_id, jpeg, jpeg_len, esp_timer_get_time(), frame_done_cb);
         }
 
         if (pending_jpeg) {
