@@ -8,9 +8,7 @@
 #include "wendy_com.h"
 
 #include "cam_loop.h"
-#include "camera.h"
 #include "mic.h"
-#include "server.h"
 
 // Onboard user LED (GPIO 21 on the XIAO ESP32S3), active low: LOW = on
 #define USER_LED_GPIO 21
@@ -92,7 +90,6 @@ void app_main(void)
     };
     ESP_ERROR_CHECK(gpio_config(&led_config));
 
-    // ESP_ERROR_CHECK(server_start());
     // ESP_ERROR_CHECK(mic_start());
 
     bool on = false;
