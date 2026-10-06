@@ -1,8 +1,10 @@
 #include <stdio.h>
+#include <stdatomic.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
+#include "esp_log.h"
 
 #include "wendy_core.h"
 #include "wendy_com.h"
@@ -14,19 +16,20 @@
 
 // Onboard user LED (GPIO 21 on the XIAO ESP32S3), active low: LOW = on
 #define USER_LED_GPIO 21
+static atomic_bool camera_ready;
 
 static enum wcom_sensor_link_result sensor_link_get_manifest(struct wcom_sensor_descriptor *sensors,
                                                                size_t max_sensors,
                                                                size_t *sensor_count)
 {
-    if (max_sensors < 1) {
+    if (!camera_ready || max_sensors < 1) {
         *sensor_count = 0;
         return WCOM_SENSOR_LINK_OK;
     }
 
     sensors[0] = (struct wcom_sensor_descriptor){
         .channel_id = 0,
-        .kind = wendy_lite_sensorlink_SensorDescriptor_Kind_CAMERA,
+        .input_id = 0,
         .name = "camera",
         .format_kind = WCOM_SENSOR_FORMAT_VIDEO,
         .format.video = {
@@ -45,7 +48,7 @@ static enum wcom_sensor_link_result sensor_link_subscribe(int client_id, const u
     if (count == 0) {
         return WCOM_SENSOR_LINK_OK;
     }
-    if (count != 1 || channel_ids[0] != 0) {
+    if (!camera_ready || count != 1 || channel_ids[0] != 0) {
         return WCOM_SENSOR_LINK_FAIL;
     }
     cam_loop_start(client_id, channel_ids[0]);
@@ -80,7 +83,12 @@ void app_main(void)
 {
     wendy_core_register_sensor_link_source(&sensor_link_delegate);
     ESP_ERROR_CHECK(wendy_core_init());
-    ESP_ERROR_CHECK(cam_loop_init());
+    esp_err_t camera_err = cam_loop_init();
+    camera_ready = camera_err == ESP_OK;
+    if (!camera_ready) {
+        ESP_LOGE("main", "Camera unavailable (%s); device management remains active",
+                 esp_err_to_name(camera_err));
+    }
 
     int count = 0;
 

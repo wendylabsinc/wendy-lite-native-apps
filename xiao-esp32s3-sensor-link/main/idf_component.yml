@@ -8,4 +8,50 @@ dependencies:
   wendy_core:
     git: "https://github.com/wendylabsinc/wendy-lite.git"
     path: "components/wendy_core"
-    version: "gab/slink-snapshot1"
+    version: &wendy_lite_revision "55be13f1ae87e8874252f43130dfb9f46b0ee7dc"
+  wendy_pki:
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/wendy_pki"
+    version: *wendy_lite_revision
+  wendy_wolfssl:
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/wendy_wolfssl"
+    version: *wendy_lite_revision
+
+  # Pin the SDK components together, including transitive native dependencies.
+  nanopb:
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/nanopb"
+    version: *wendy_lite_revision
+  wendy_ble:
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/wendy_ble"
+    version: *wendy_lite_revision
+  wendy_cloud:
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/wendy_cloud"
+    version: *wendy_lite_revision
+  wendy_com:
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/wendy_com"
+    version: *wendy_lite_revision
+  wendy_conf:
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/wendy_conf"
+    version: *wendy_lite_revision
+  wendy_server:
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/wendy_server"
+    version: *wendy_lite_revision
+  wendy_stdio:
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/wendy_stdio"
+    version: *wendy_lite_revision
+  wendy_usj:
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/wendy_usj"
+    version: *wendy_lite_revision
+  wendy_wifi:
+    git: "https://github.com/wendylabsinc/wendy-lite.git"
+    path: "components/wendy_wifi"
+    version: *wendy_lite_revision
