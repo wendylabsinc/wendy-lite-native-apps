@@ -71,6 +71,19 @@ static void cam_loop_task(void *arg)
                 break;
             }
 
+            // Return the transmitted frame before requesting another one.
+            // Holding a frame while capture waits can starve the driver's
+            // two-buffer pool, and ages the next frame behind a slow send.
+            if (pending_jpeg) {
+                EventBits_t bits = xEventGroupWaitBits(s_events, FRAME_DONE_BIT | STOP_BIT,
+                                                      pdFALSE, pdFALSE, portMAX_DELAY);
+                if (bits & STOP_BIT) {
+                    break;
+                }
+                cam_capture_release_frame(pending_jpeg);
+                pending_jpeg = NULL;
+            }
+
             const uint8_t *jpeg;
             size_t jpeg_len;
             int width, height;
@@ -81,21 +94,7 @@ static void cam_loop_task(void *arg)
                 continue;
             }
 
-            if (pending_jpeg) {
-                // A previous frame is still in flight; wait for its done
-                // callback before reusing the slot. Nothing to wait for on
-                // the very first frame of a stream.
-                EventBits_t bits = xEventGroupWaitBits(s_events, FRAME_DONE_BIT | STOP_BIT, pdFALSE, pdFALSE,
-                                                        portMAX_DELAY);
-                if (bits & STOP_BIT) {
-                    cam_capture_release_frame(jpeg);
-                    break;
-                }
-
-                cam_capture_release_frame(pending_jpeg);
-            } else if (xEventGroupGetBits(s_events) & STOP_BIT) {
-                // Nothing in flight to wait for, but a stop may have arrived
-                // while we were capturing.
+            if (xEventGroupGetBits(s_events) & STOP_BIT) {
                 cam_capture_release_frame(jpeg);
                 break;
             }

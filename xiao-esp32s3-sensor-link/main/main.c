@@ -81,14 +81,16 @@ static const struct wcom_sensor_link_delegate sensor_link_delegate = {
 
 void app_main(void)
 {
-    wendy_core_register_sensor_link_source(&sensor_link_delegate);
-    ESP_ERROR_CHECK(wendy_core_init());
+    // Reserve contiguous internal DMA memory before WiFi and TLS tasks fragment it.
     esp_err_t camera_err = cam_loop_init();
     camera_ready = camera_err == ESP_OK;
     if (!camera_ready) {
         ESP_LOGE("main", "Camera unavailable (%s); device management remains active",
                  esp_err_to_name(camera_err));
     }
+
+    wendy_core_register_sensor_link_source(&sensor_link_delegate);
+    ESP_ERROR_CHECK(wendy_core_init());
 
     int count = 0;
 

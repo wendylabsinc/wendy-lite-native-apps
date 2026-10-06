@@ -26,10 +26,18 @@ The HTTPS bundle must also cover the broker if it uses a different CA. RFC 3161
 time additionally requires `--tsa-roots`; Roughtime does not need a TSA bundle.
 The board persists these roots in its configuration alongside its PKI settings.
 
-JPEG capture uses direct PSRAM DMA to avoid a large internal-RAM allocation
-alongside WiFi, BLE, and PKI. If camera initialization fails, device management
+JPEG frame buffers live in PSRAM. Direct PSRAM DMA is disabled because it
+stalled capture during WiFi/PKI operation on the XIAO ESP32-S3; the driver uses
+an internal DMA buffer instead. Camera initialization runs before networking to
+reserve contiguous DMA memory. If camera initialization fails, device management
 continues and the camera is omitted from the SensorLink manifest.
 
 WiFi/LwIP prefer PSRAM, general allocations above 1 KiB prefer PSRAM, and
-64 KiB of internal RAM is reserved for task stacks and DMA. Fixed WiFi TX/RX
+96 KiB of internal RAM is reserved for task stacks and DMA. Fixed WiFi TX/RX
 buffers and the RX block-ack window are limited to four for this camera build.
+
+View over WiFi after signing in to the same PKI organization used for enrollment:
+
+```sh
+wendy device camera view --device wendy-lite:<device-hostname>.local
+```
