@@ -1,0 +1,5 @@
+{
+  "appId": "com.example.xiao-esp32s3-sensor-link",
+  "version": "0.1.0",
+  "platform": "wendy-lite"
+}
