@@ -28,9 +28,8 @@ static const char *TAG = "cam_capture";
 
 // How many frame buffers the driver owns, and therefore how many frames can be
 // checked out at once: the driver never hands out more than it has. Callers
-// must not hold this many and expect another capture to succeed -- cam_loop
-// borrows one while it captures the next, which is the tightest legitimate
-// use.
+// must not hold this many and expect another capture to succeed. cam_loop
+// returns its transmitted frame before requesting the next capture.
 #define CAM_CAPTURE_MAX_INFLIGHT 2
 
 static const camera_config_t s_config = {
