@@ -1,8 +1,6 @@
 #pragma once
 
-/* Owns the camera driver on behalf of server.c's JPEG streaming. Owns
- * esp_camera exclusively — mutually exclusive with camera.c's
- * camera_start(). */
+/* Owns the esp_camera driver on behalf of cam_loop's sensor-link streaming. */
 
 #include <stddef.h>
 #include <stdint.h>

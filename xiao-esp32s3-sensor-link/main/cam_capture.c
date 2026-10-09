@@ -9,8 +9,6 @@
 static const char *TAG = "cam_capture";
 
 // OV2640 on the XIAO ESP32S3 Sense expansion board (DVP interface).
-// Same wiring as camera.c, duplicated on purpose: that module is kept
-// as-is and only one of the two may own the esp_camera driver.
 #define CAM_PIN_PWDN  -1
 #define CAM_PIN_RESET -1
 #define CAM_PIN_XCLK  10

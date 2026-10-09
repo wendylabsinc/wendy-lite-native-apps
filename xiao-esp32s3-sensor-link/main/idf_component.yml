@@ -3,20 +3,9 @@ dependencies:
     version: ">=5.5.0"
   espressif/esp32-camera:
     version: "^2.0.0"
-  espressif/mdns:
-    version: "^1.11.0"
   wendy_core:
     git: "https://github.com/wendylabsinc/wendy-lite.git"
     path: "components/wendy_core"
-    version: &wendy_lite_revision "32b49702bb963ec1f94f4394e037c394177e0108"
-  wendy_pki:
-    git: "https://github.com/wendylabsinc/wendy-lite.git"
-    path: "components/wendy_pki"
-    version: *wendy_lite_revision
-  wendy_wolfssl:
-    git: "https://github.com/wendylabsinc/wendy-lite.git"
-    path: "components/wendy_wolfssl"
-    version: *wendy_lite_revision
 
   # Pin the SDK components together, including transitive native dependencies.
   nanopb:
