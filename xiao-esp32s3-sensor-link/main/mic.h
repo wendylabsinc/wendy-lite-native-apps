@@ -1,17 +1,14 @@
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
 #include "esp_err.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define MIC_SAMPLE_RATE_HZ 16000
+#define MIC_READ_SAMPLES 320
 
-/* Initializes the onboard PDM microphone and starts the capture loop task. */
+/* Reserve the PDM peripheral before networking allocates DMA memory. */
+esp_err_t mic_init(void);
 esp_err_t mic_start(void);
-
-/* Stops the capture loop and deinitializes the microphone. */
+esp_err_t mic_read(int16_t *buffer, size_t samples, size_t *bytes_read);
 void mic_stop(void);
-
-#ifdef __cplusplus
-}
-#endif

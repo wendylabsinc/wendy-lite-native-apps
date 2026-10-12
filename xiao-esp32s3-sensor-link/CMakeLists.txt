@@ -2,11 +2,6 @@
 # CMakeLists in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.16)
 
-# WAMR (pulled in transitively via wendy_core -> wendy_wasm) declares
-# cmake_minimum_required(VERSION 3.5), which CMake 4.x rejects outright.
-# Allow it via the compatibility policy, same as wendy-lite itself does.
-set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-
 # Pull wendy-lite's components in from its checkout on disk instead of
 # vendoring copies here. Points at the local clone of
 # github.com:wendylabsinc/wendy-lite, a sibling checkout
@@ -16,4 +11,14 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 #)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+# Only build main and its dependencies. Including every local SDK component
+# enables WASM Kconfig options even when native firmware disables WASM support.
+idf_build_set_property(MINIMAL_BUILD ON)
+
+if(NOT IDF_TARGET STREQUAL "esp32s3")
+    message(FATAL_ERROR
+        "This project requires the XIAO ESP32S3 Sense (esp32s3), but IDF_TARGET is '${IDF_TARGET}'. "
+        "Run 'idf.py set-target esp32s3' before building.")
+endif()
+
 project(xiao-esp32s3-sensor-link)

@@ -1,6 +1,6 @@
 # Seeed XIAO ESP32S3 Sensor Link Demo
 
-Streams MJPEG video on request over the Sensor Link protocol.
+Streams MJPEG video or microphone audio on request over the SensorLink protocol.
 
 PKI enrollment and the cloud connection task are enabled by default. The
 `wendy_pki` NVS partition stores the device identity.
@@ -9,8 +9,14 @@ When installing this partition layout for the first time, flash the full build
 over USB from an ESP-IDF 5.5.4 shell:
 
 ```sh
+idf.py set-target esp32s3
 idf.py -p /dev/cu.usbmodem101 build flash
 ```
+
+The project defaults to `esp32s3` and requires that target. If an existing build
+uses another target, `idf.py set-target esp32s3` clears the build directory and
+regenerates `sdkconfig` from `sdkconfig.defaults`, saving the previous config as
+`sdkconfig.old`.
 
 Replace the serial port with your board's port. `wendy run` updates the app
 binary only; it does not update the partition table. An older partition table
@@ -41,3 +47,21 @@ View over WiFi after signing in to the same PKI organization used for enrollment
 ```sh
 wendy device camera view --device wendy-lite:<device-hostname>.local
 ```
+
+The onboard PDM microphone is SensorLink channel 1 and sends signed 16-bit
+little-endian PCM at 16 kHz, mono, in 20 ms chunks. The camera remains channel 0.
+The pinned SDK supports one active stream, so stop camera viewing before
+listening. Competing subscriptions are rejected. Capture stops on unsubscribe
+or disconnect; buffers stay owned by the sender until transmission completes.
+
+With a Wendy CLI containing direct SensorLink audio support:
+
+```sh
+wendy device audio list --device wendy-lite:<device-hostname>.local
+wendy device audio listen --device wendy-lite:<device-hostname>.local --id 1
+```
+
+USB also works with `--device wendy-lite:/dev/cu.usbmodem101`. To save raw PCM,
+add `--stdout > microphone.s16le`. Without explicit format flags the CLI uses
+the channel's advertised sample rate and channel count. Explicit mismatches
+are rejected; this firmware does not resample audio.

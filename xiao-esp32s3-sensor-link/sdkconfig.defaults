@@ -1,3 +1,6 @@
+# The XIAO ESP32S3 Sense uses an ESP32-S3.
+CONFIG_IDF_TARGET="esp32s3"
+
 # Flash size - 8 MB (XIAO ESP32S3 Sense); partitions.csv is sized accordingly.
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
 
@@ -13,7 +16,13 @@ CONFIG_WENDY_CORE_WASM_APP_SUPPORT=n
 CONFIG_WENDY_PKI=y
 CONFIG_WENDY_CLOUD=y
 
-# Partition table - custom CSV with single WASM slot
+# Wendy PKI uses TLS 1.3 and verifies Sigstore P-384/SHA-384 certificates.
+CONFIG_MBEDTLS_SSL_PROTO_TLS1_3=y
+CONFIG_MBEDTLS_SSL_KEEP_PEER_CERTIFICATE=y
+CONFIG_MBEDTLS_ECP_DP_SECP384R1_ENABLED=y
+CONFIG_MBEDTLS_SHA512_C=y
+
+# Native OTA app slots and persistent Wendy configuration/PKI partitions.
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
