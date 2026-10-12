@@ -18,6 +18,11 @@ uses another target, `idf.py set-target esp32s3` clears the build directory and
 regenerates `sdkconfig` from `sdkconfig.defaults`, saving the previous config as
 `sdkconfig.old`.
 
+The Wendy Lite SDK revision is pinned in `main/idf_component.yml`. After changing
+that revision in an existing checkout, run `idf.py update-dependencies` before
+building. A regular reconfigure can retain older Git revisions from the local
+`dependencies.lock`.
+
 Replace the serial port with your board's port. `wendy run` updates the app
 binary only; it does not update the partition table. An older partition table
 without `wendy_pki` causes the enrollment challenge to fail with `bad state`.

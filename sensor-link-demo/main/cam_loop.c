@@ -17,6 +17,7 @@ static const char *TAG = "cam_loop";
 #define FRAME_DONE_BIT (1 << 0)
 #define STOP_BIT (1 << 1)
 #define START_BIT (1 << 2)
+#define STREAM_ENDED_BIT (1 << 3)
 
 static TaskHandle_t s_task;
 static EventGroupHandle_t s_events;
@@ -32,9 +33,14 @@ static bool s_active_valid;
 static int s_active_client_id;
 static uint32_t s_active_channel_id;
 
-static void frame_done_cb(uint32_t channel_id)
+static void stream_push_cb(uint32_t channel_id)
 {
     xEventGroupSetBits(s_events, FRAME_DONE_BIT);
+}
+
+static void stream_end_cb(uint32_t channel_id)
+{
+    xEventGroupSetBits(s_events, STREAM_ENDED_BIT);
 }
 
 static void cam_loop_task(void *arg)
@@ -102,7 +108,7 @@ static void cam_loop_task(void *arg)
 
             pending_jpeg = jpeg;
             xEventGroupClearBits(s_events, FRAME_DONE_BIT);
-            wendy_core_send_jpeg_frame(client_id, channel_id, jpeg, jpeg_len, esp_timer_get_time(), frame_done_cb);
+            wendy_core_sensor_stream_push(client_id, channel_id, jpeg, jpeg_len, esp_timer_get_time(), stream_push_cb);
         }
 
         if (pending_jpeg) {
@@ -112,7 +118,11 @@ static void cam_loop_task(void *arg)
             cam_capture_release_frame(pending_jpeg);
         }
 
-        wendy_core_sensor_stream_end(client_id, channel_id);
+        // Wait for the end to take effect: a begin sent before then could
+        // be dropped, leaving the next stream closed.
+        xEventGroupClearBits(s_events, STREAM_ENDED_BIT);
+        wendy_core_sensor_stream_end(client_id, channel_id, stream_end_cb);
+        xEventGroupWaitBits(s_events, STREAM_ENDED_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
         ESP_LOGI(TAG, "stopped stream for client %d channel %" PRIu32, client_id, channel_id);
 
         taskENTER_CRITICAL(&s_lock);

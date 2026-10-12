@@ -12,7 +12,6 @@
 #include "cam_loop.h"
 #include "cam_capture.h"
 #include "mic.h"
-#include "server.h"
 
 // Onboard user LED (GPIO 21 on the XIAO ESP32S3), active low: LOW = on
 #define USER_LED_GPIO 21
@@ -41,7 +40,7 @@ static enum wcom_sensor_link_result sensor_link_get_manifest(struct wcom_sensor_
     if (microphone_ready && *sensor_count < max_sensors) {
         sensors[(*sensor_count)++] = (struct wcom_sensor_descriptor){
             .channel_id = 1,
-            // The pinned SDK can stream only one input at a time.
+            // The SDK can stream only one input at a time.
             .input_id = 0,
             .name = "microphone",
             .format_kind = WCOM_SENSOR_FORMAT_AUDIO,
@@ -120,8 +119,6 @@ void app_main(void)
         .intr_type = GPIO_INTR_DISABLE,
     };
     ESP_ERROR_CHECK(gpio_config(&led_config));
-
-    // ESP_ERROR_CHECK(server_start());
 
     bool on = false;
     while (true) {
