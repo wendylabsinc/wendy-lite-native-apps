@@ -7,8 +7,16 @@
 
 #include "wendy_core.h"
 
-// Onboard user LED (GPIO 21 on the XIAO ESP32S3), active low: LOW = on
+// Onboard user LED
+#if CONFIG_IDF_TARGET_ESP32P4
+// DFRobot FireBeetle 2 ESP32-P4 (DFR1172): GPIO 3, active high
+#define USER_LED_GPIO 3
+#define USER_LED_ON 1
+#else
+// Seeed XIAO ESP32S3: GPIO 21, active low
 #define USER_LED_GPIO 21
+#define USER_LED_ON 0
+#endif
 
 void app_main(void)
 {
@@ -27,7 +35,7 @@ void app_main(void)
     bool on = false;
     while (true) {
         on = !on;
-        ESP_ERROR_CHECK(gpio_set_level(USER_LED_GPIO, on ? 0 : 1));
+        ESP_ERROR_CHECK(gpio_set_level(USER_LED_GPIO, on ? USER_LED_ON : !USER_LED_ON));
         vTaskDelay(pdMS_TO_TICKS(500));
         printf("Cycle %d\n", count++);
     }

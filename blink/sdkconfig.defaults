@@ -1,10 +1,7 @@
-# Flash size: 8 MB (XIAO ESP32S3 Sense)
-CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
-
-# ESP32-S3R8 on the XIAO: 8 MB octal PSRAM
-CONFIG_SPIRAM=y
-CONFIG_SPIRAM_MODE_OCT=y
-CONFIG_SPIRAM_SPEED_80M=y
+# Board-specific settings live in sdkconfig.defaults.<target>, which ESP-IDF
+# applies on top of this file:
+#   - sdkconfig.defaults.esp32s3  Seeed XIAO ESP32S3
+#   - sdkconfig.defaults.esp32p4  DFRobot FireBeetle 2 ESP32-P4 (DFR1172)
 
 # Move WiFi/PHY hot paths from IRAM to flash (frees ~15-25 KB DIRAM)
 CONFIG_ESP_WIFI_IRAM_OPT=n
